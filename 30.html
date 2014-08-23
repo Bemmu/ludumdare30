@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<meta charset=utf-8>
+<title>Connected Worlds</title>
+<style>
+svg {
+	border: solid 10px black;
+}
+</style>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script>
+
+var nodes = [];
+var links = [];
+
+var width = 960, height = 500;
+var force = d3.layout.force()
+	.nodes(nodes)
+	.links(links)
+	.size([width, height])
+	.start();
+
+update();
+
+function update() {
+	node.exit().remove();
+
+	var nodeEnter = node.enter().append("g")
+		.attr("class", "node")
+//		.on("click", click)
+		.call(force.drag);
+
+	nodeEnter.append("circle")
+		.attr("r", 10);
+}
+
+</script>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<body>
+<script src="d3.js"></script>
+<script>
+
+var width = 960,
+    height = 500;
+var keys = {};
+
+var force = d3.layout.force()
+    .gravity(1)
+    .size([width, height])
+    .on("tick", tick);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+var color = Math.random() * 360;
+
+svg.append('rect')
+  .attr("width", width)
+  .attr("height", height)
+  .attr("fill", d3.hsl(color, 0.5, 0.5))
+
+var nodes = [];
+var ships = [];
+var bullets = [];
+
+update();
+
+function update() {
+
+  for (var i = 0; i < 100; i++) {
+    nodes.push({
+      x : width / 2,
+      r : 20,
+      rs : 0,
+      type : 'god'
+    });
+  }
+
+  ships.push({
+    angle : 10,
+    angleS : 0,
+    distance : 200
+  });
+
+  // Restart the force layout.
+  force
+      .nodes(nodes)
+      .start();
+
+  for (var i = 0; i < 100; i++) {
+    force.tick();
+  }
+
+  // Update nodes.
+  //node = node.data(nodes);
+
+  var node = svg.selectAll(".node").data(nodes);
+
+  //node.exit().remove();
+
+  var nodeEnter = node.enter().append("g")
+      .append("circle")
+      .attr('class', 'god')
+      .attr('cx', function (d) { return d.x; })
+      .attr('cy', function (d) { return d.y; })
+      .attr('r', function (d) { return d.r; })
+      .attr("fill", function(d) {
+        return d3.hsl(
+          200 + color /*+ 20 * Math.sin(Math.atan2(
+            width/2 - d.x, 
+            height/2 - d.y
+          ))*/,
+          0.6,
+          0.6 //- (d.y/height)*0.2
+        );
+      });
+
+  var ship = svg.selectAll(".ship").data(ships);
+
+  ship.enter().append("g")
+    .append("circle")
+    .attr('class', 'ship')
+    .attr("r", 20)
+    .attr("fill", "#000000");
+}
+
+d3.select("body")
+    .on("keydown", function() {
+      keys[d3.event.keyCode] = true;
+    })
+    .on("keyup", function() {
+      delete keys[d3.event.keyCode];
+    });
+
+function collisions() {
+  for (var i = 0; i < bullets.length; i++) {
+    bullets[i].x = width / 2 + Math.cos(bullets[i].angle) * bullets[i].distance;
+    bullets[i].y = height / 2 + Math.sin(bullets[i].angle) * bullets[i].distance;
+  }
+
+  var combined = nodes.concat(bullets);
+  var q = d3.geom.quadtree(combined);
+
+  for (var i = 0; i < combined.length; i++) {
+    q.visit(collide(combined[i]));
+  }
+}
+
+function collide(node) {
+  var r = node.r;
+  var nx1 = node.x - r;
+  var ny1 = node.y - r;
+  var nx2 = node.x + r;
+  var ny2 = node.y + r;
+
+  return function(quad, x1, y1, x2, y2) {
+    if (quad.point && (quad.point !== node)) {
+       var x = node.x - quad.point.x;
+       var y = node.y - quad.point.y;
+       var l = Math.sqrt(x * x + y * y);
+       var r = node.r + quad.point.r;
+
+       if (l < r && node.type !== quad.point.type) {
+        node.exploding = true;
+        quad.point.exploding = true;
+       }
+    }
+    return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+ };
+}
+
+var ticks = 0;
+function tick(e) {
+//  nodes = [];
+
+//  console.log(keys);
+  ticks += 1;
+
+  if (keys[37] || keys[65]) {
+    for (var i = 0; i < ships.length; i++) {
+      ships[i]['angleS'] += Math.PI / 600;
+    }
+  }
+  if (keys[39] || keys[68]) {
+    for (var i = 0; i < ships.length; i++) {
+      ships[i]['angleS'] -= Math.PI / 600;
+    }
+  }
+  if (keys[90] || keys[32]) {
+    bullets.push({
+      angle : ships[0].angle,
+      distance : ships[0].distance,
+      r : 5,
+      type : 'bullet'
+    });
+  }
+
+  ships.forEach(function (ship) {
+    ship.angle += ship.angleS;
+    ship.angleS *= 0.95;
+  });
+
+  var bullet = svg.selectAll(".bullet").data(bullets);
+
+  bullet.enter().append("g")
+    .append("circle")
+    .attr('class', 'bullet')
+    .attr("r", function (d) { return d.r; })
+    .attr("fill", "#000000");
+
+  bullets.forEach(function (b) {
+    b.distance -= 2;
+  });
+
+  svg.selectAll(".bullet")
+    .attr("cx", function (d) { return width / 2 + Math.cos(d.angle) * d.distance; })
+    .attr("cy", function (d) { return height / 2 + Math.sin(d.angle) * d.distance; });
+
+  svg.selectAll(".ship")
+    .attr("cx", function (d) { return width / 2 + Math.cos(d.angle) * d.distance; })
+    .attr("cy", function (d) { return height / 2 + Math.sin(d.angle) * d.distance; });
+
+  svg.selectAll(".god")
+    .attr("cx", function (d) { return d.x; })
+    .attr("cy", function (d) { return d.y; })
+    .attr('r', function (d, i) { 
+//      d.rs += Math.random() * 0.1 - 0.05;
+//      d.r += d.rs;
+//      d.r = Math.max(5, d.r);
+//      d.rs *= 0.9;
+      return d.r; 
+    });
+
+  collisions();
+
+  // Destroy things that are exploding
+  var newNodes = [];
+  for (var i = 0; i < nodes.length; i++) {
+    if (!nodes[i].exploding) {
+      newNodes.push(nodes[i]);
+    }
+  }
+
+  var newBullets = [];
+  for (var i = 0; i < bullets.length; i++) {
+    if (!bullets[i].exploding) {
+      newBullets.push(bullets[i]);
+    }
+  }
+
+  if (bullets.length !== newBullets.length) {
+    bullets = newBullets;
+    svg.selectAll(".bullet").data(newBullets)
+    .exit().remove();
+  }
+
+  if (nodes.length !== newNodes.length) {
+    nodes = newNodes;
+    svg.selectAll(".god").data(newNodes)
+      .exit().remove();
+  }
+
+  force.alpha(0.1);
+}
+
+</script>
