@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<body>
+  <svg width=960 height=500 style="border:dashed 2px #ccc">
+  <defs>
+    <radialGradient id="grad1" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+          <stop offset="0%" style="stop-color:rgb(255,255,255);
+          stop-opacity:0.2" />
+          <stop offset="100%" style="stop-color:rgb(255,255,255);stop-opacity:0" />
+        </radialGradient>
+      <radialGradient id="grad2" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+            <stop offset="0%" style="stop-color:rgb(255,255,255);
+            stop-opacity:1" />
+            <stop offset="100%" style="stop-color:rgb(255,255,255);stop-opacity:0" />
+          </radialGradient>
+    </defs>
+    <g id="backgrounds"></g>
+    <g id="all"></g>
+    <g id="text" transform="skewY(3) skewX(5)">
+      <text id="winteksti" transform="translate(100,150)"
+      opacity = "0"
+        font-family="Impact, Charcoal, sans-serif" font-size="55">
+        You saved the earth!
+      </text>
+      <text id="loseteksti" transform="translate(50,150)"
+      opacity = "0"
+        font-family="Impact, Charcoal, sans-serif" font-size="55">
+        Earth destroyed!
+        Reload to play again.
+      </text>
+
+      <text id="teksti"
+            opacity = "0.8"
+              font-family="Impact, Charcoal, sans-serif" font-size="55"
+
+               fill="white" >
+<tspan x="0" dy="4.2em">The sun collapsed</tspan>
+<tspan x="0" dy="4.2em">Turned into a wormhole</tspan>
+<tspan x="0" dy="4.2em">Strange worlds started to emerge</tspan>
+<tspan x="0" dy="4.2em">Earth itself is our final defense</tspan>
+<tspan x="0" dy="4.2em">Use left & right arrow</tspan>
+<tspan x="0" dy="1.2em">and space bar to defend!</tspan>
+        </text>
+    </g>
+    <g id="aim" opacity="0"></g>
+  </svg>
+<script src="d3.js"></script>
+<script>
+
+var width = 960,
+    height = 500;
+var keys = {};
+
+var force = d3.layout.force()
+    .gravity(0.1)
+    .size([width, height])
+    .on("tick", tick);
+
+var svg = d3.select("svg").select("#all");
+
+var color = Math.random() * 360;
+
+var heroColor = d3.hsl(color + 130, 0.9, 0.1);
+
+var ticks = 0;
+var reloadTime = 10;
+var reload = reloadTime;
+
+var snd = new Audio("shoot.wav");
+var wingame = new Audio("wingame.wav");
+var losegame = new Audio("losegame.wav");
+var levelcomplete = new Audio("levelcomplete.wav");
+var multiply = new Audio("multiply.wav");
+var hitSounds = [new Audio("hit1.wav"), new Audio("hit2.wav")];
+
+var levels = [
+  {
+    initialParticles : 0,
+    knowsHowToMultiply : false,
+    colorVariety : 0,
+    enemyFill : function(d) {
+      return "#000000"
+    },
+    multiplyTime : 0,
+    maxsize : 300
+  },
+  {
+    initialParticles : 10,
+    promiscuity : 0.2,
+    knowsHowToMultiply : false,
+    colorVariety : 20,
+    enemyFill : function(d) {
+      return d3.hsl(
+        200 + color + level.colorVariety * Math.sin(Math.atan2(
+          width/2 - d.x, 
+          height/2 - d.y
+        )),
+        0.6,
+        0.6 //- (d.y/height)*0.2
+      );
+    },
+    multiplyTime : 100,
+    maxsize : 300
+  },
+  {
+    initialParticles : 50,
+    promiscuity : 0.2,
+    knowsHowToMultiply : false,
+    colorVariety : 20,
+    enemyFill : function(d) {
+      return d3.hsl(
+        200 + color + level.colorVariety * Math.sin(Math.atan2(
+          width/2 - d.x, 
+          height/2 - d.y
+        )),
+        0.6,
+        0.6 //- (d.y/height)*0.2
+      );
+    },
+    multiplyTime : 100,
+    maxsize : 300
+  },
+  {
+    initialParticles : 10,
+    promiscuity : 0.2,
+    knowsHowToMultiply : true,
+    colorVariety : 20,
+    enemyFill : function(d) {
+      return d3.hsl(
+        200 + color + level.colorVariety * Math.sin(Math.atan2(
+          width/2 - d.x, 
+          height/2 - d.y
+        )),
+        0.6,
+        0.6 //- (d.y/height)*0.2
+      );
+    },
+    multiplyTime : 100,
+    maxsize : 30
+  },
+  {
+    initialParticles : 3,
+    knowsHowToMultiply : true,
+    colorVariety : 0,
+    enemyFill : function(d) {
+      return "url(#grad2)";
+    },
+    multiplyTime : 100,
+    promiscuity : 0.95,
+    maxsize : 30
+  },
+  {
+    initialParticles : 10,
+    promiscuity : 0.2,
+    knowsHowToMultiply : true,
+    colorVariety : 20,
+    enemyFill : function(d) {
+      return d3.hsl(
+        200 + color + level.colorVariety * Math.sin(Math.atan2(
+          width/2 - d.x, 
+          height/2 - d.y
+        )),
+        0.6,
+        0.6 //- (d.y/height)*0.2
+      );
+    },
+    multiplyTime : 100,
+    maxsize : 300
+  },
+  {
+    initialParticles : 20,
+    knowsHowToMultiply : true,
+    colorVariety : 20,
+    enemyFill : function(d) {
+      return d3.hsl(
+        200 + color + level.colorVariety * Math.sin(Math.atan2(
+          width/2 - d.x, 
+          height/2 - d.y
+        )),
+        0.6,
+        0.6 //- (d.y/height)*0.2
+      );
+    },
+    multiplyTime : 200,
+    promiscuity : 0.5,
+    maxsize : 30
+  },
+  {
+    initialParticles : 3,
+    knowsHowToMultiply : true,
+    colorVariety : 0,
+    enemyFill : function(d) {
+      return "url(#grad2)";
+    },
+    multiplyTime : 100,
+    promiscuity : 1.1,
+    maxsize : 30
+  }
+];
+var currentLevel = 0;
+var level = levels[currentLevel];
+var multiplyCountdown = level.multiplyTime;
+
+var background = d3.select("svg").select("#backgrounds").append('rect')
+  .attr("width", width)
+  .attr("height", height)
+  .attr("fill", d3.hsl(color, 0.5, 0.5));
+
+d3.select("svg").select("#backgrounds").append('rect')
+  .attr("width", width)
+  .attr("height", height)
+  .attr("fill", "url(#grad1)"/*d3.hsl(color, 0.5, 0.5)*/);
+
+var reloadIndicator = d3.select("svg").select("#backgrounds").append('rect')
+    .attr("width", width)
+    .attr("height", height / 25)
+    .attr("fill", heroColor).attr('opacity', 0);
+
+var multiplyIndicator = d3.select("svg").select("#backgrounds").append('rect')
+    .attr("width", width)
+    .attr("y", height - height / 25)
+    .attr("height", height / 25)
+    .attr("fill", d3.hsl(color + 180, 0.9, 0.5));
+
+    d3.select("svg").select("#aim").append('rect')
+  .attr("x", width / 2 - height / 30 / 2)
+  .attr("y", height / 2)
+  .attr("width", height / 30)
+  .attr("height", 1)
+  .attr("fill", "#000000");
+
+  d3.select("svg").select("#aim").append('rect')
+  .attr("x", width / 2)
+  .attr("y", height / 2 - height / 30 / 2)
+  .attr("width", 1)
+  .attr("height", height / 30)
+  .attr("fill", "#000000");
+
+/*svg.append('image')
+  .attr('x', width / 40)
+  .attr('y', height / 2)
+  .attr('width', 121)
+  .attr('height', 124)
+  .attr('xlink:href', 'earth.png');*/
+
+var nodes = [];
+var ships = [];
+var bullets = [];
+
+update();
+
+function createNodes(nodes) {
+  var node = svg.selectAll(".node").data(nodes);
+  var nodeEnter = node.enter().append("g")
+    .append("circle")
+    .attr('class', 'god')
+    .attr('cx', function (d) { return d.x; })
+    .attr('cy', function (d) { return d.y; })
+    .attr('r', function (d) { return d.r; })
+    .attr("fill", level.enemyFill);
+}
+
+function godParticles(count) {
+  for (var i = 0; i < count; i++) {
+    nodes.push({
+      x : width / 2 + Math.random()*15,
+      y : height / 2 + Math.random()*15,
+      r : 1,
+      rs : 0.1,
+      type : 'god'
+    });
+  }
+  createNodes(nodes);
+  // Restart the force layout.
+  force
+      .nodes(nodes)
+      .start();
+}
+
+var textY = 400;
+function translate(d) {
+  return "translate(0, " + textY + ")";
+}
+
+window.onload = function () {
+  d3.select("svg").select("#teksti")
+    .attr('transform', 'translate(0, 400)')
+ //   .transition().duration(1)
+    .transition().duration(2000).attr('transform', 'translate(0, 0)')
+    .transition().duration(2000).attr('transform', 'translate(0, -300)')
+    .transition().duration(2000).attr('transform', 'translate(0, -600)')
+    .transition().duration(2000).attr('transform', 'translate(0, -900)')
+    .transition().duration(2000).attr('opacity', '0')
+    .each("end", levelCompleted)
+    ;
+
+
+//  levelCompleted();
+};
+
+ships.push({
+  angle : 0,
+  angleS : 0,
+  distance : 200
+}/*,
+{
+    angle : Math.PI,
+    angleS : 0,
+    distance : 200
+  }*/
+);
+
+function update() {
+  godParticles(level.initialParticles);
+
+  for (var i = 0; i < 150; i++) {
+    force.tick();
+  }
+
+  // Update nodes.
+  //node = node.data(nodes);
+
+ 
+  var ship = svg.selectAll(".ship").data(ships);
+
+  var g = ship.enter().append("g");
+
+  g.append('image')
+//    .append("circle")
+    .attr('class', 'ship')    
+ //   .attr("r", 20)
+    .attr('transform', 'translate(-30.5, -31) scale(1)')
+    .attr('width', 61)
+    .attr('height', 62)
+    .attr('xlink:href', 'earth2.png');
+//    .attr("fill", heroColor);
+
+/*    svg
+      .attr('x', width / 40)
+      .attr('y', height / 2)
+      .attr('width', 121)
+      .attr('height', 124)
+      .attr('xlink:href', 'earth.png');
+*/
+}
+
+d3.select("body")
+    .on("keydown", function() {
+      keys[d3.event.keyCode] = true;
+    })
+    .on("keyup", function() {
+      delete keys[d3.event.keyCode];
+    });
+
+function collisions() {
+
+
+  for (var i = 0; i < bullets.length; i++) {
+    bullets[i].x = width / 2 + Math.cos(bullets[i].angle) * bullets[i].distance;
+    bullets[i].y = height / 2 + Math.sin(bullets[i].angle) * bullets[i].distance;
+  }
+
+  for (var i = 0; i < ships.length; i++) {
+    ships[i].x = width / 2 + Math.cos(ships[i].angle) * ships[i].distance;
+    ships[i].y = height / 2 + Math.sin(ships[i].angle) * ships[i].distance;
+  }
+
+  // Check if any bullets hit earth
+  for (var i = 0; i < nodes.length; i++) {
+    for (var j = 0; j < ships.length; j++) {
+      var xd = ships[j].x - nodes[i].x;
+      var yd = ships[j].y - nodes[i].y;
+      var distance = Math.sqrt(xd*xd + yd*yd);
+      if (distance < (nodes[i].r + 20)) {
+        loseGame();
+      }
+    }
+  }
+
+  var combined = nodes.concat(bullets);
+  var q = d3.geom.quadtree(combined);
+
+  for (var i = 0; i < combined.length; i++) {
+    q.visit(collide(combined[i]));
+  }
+}
+
+function collide(node) {
+  var r = node.r;
+  var nx1 = node.x - r;
+  var ny1 = node.y - r;
+  var nx2 = node.x + r;
+  var ny2 = node.y + r;
+
+  return function(quad, x1, y1, x2, y2) {
+    if (quad.point && (quad.point !== node)) {
+       var x = node.x - quad.point.x;
+       var y = node.y - quad.point.y;
+       var l = Math.sqrt(x * x + y * y);
+       var r = node.r + quad.point.r;
+
+       if (l < r && node.type !== quad.point.type) {
+        node.exploding = true;
+        quad.point.exploding = true;
+       }
+    }
+    return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+ };
+}
+
+function winGame() {
+  clear();
+  d3.select("svg").select("#winteksti")
+    .transition().attr('opacity', '1')
+  wingame.volume = 0.5;
+  wingame.play();
+  console.log('won game');
+}
+
+var lost = false;
+function loseGame() {
+  if (lost) return;
+  lost = true;
+  losegame.play();
+  d3.select(".ship").remove();
+  d3.select("svg").select("#loseteksti")
+    .transition().attr('opacity', '1')
+  console.log('lost game');
+}
+
+function clear() {
+  bullets = [];
+  svg.selectAll(".bullet").remove();
+
+//  ships = [];
+//  svg.selectAll(".ship").remove();
+
+  color = Math.random() * 360;
+  background.transition().attr("fill", d3.hsl(color, 0.5, 0.5));
+  heroColor = d3.hsl(color + 130, 0.9, 0.1);
+  reloadIndicator.transition().attr("fill", heroColor);
+  multiplyIndicator.attr("fill", d3.hsl(color + 180, 0.9, 0.5));
+
+}
+
+function levelCompleted() {
+
+  d3.select("svg").select("#aim").transition().duration(500).attr('opacity', '1.0');
+
+  currentLevel++;
+  if (currentLevel >= levels.length) {
+    winGame();
+  } else {
+    levelcomplete.currentTime=0;
+    levelcomplete.play();
+    level = levels[currentLevel];
+    console.log('completed level');
+
+    // Some shopping part?
+
+    // Should recreate all bullets, god particles and ships
+    clear();
+    update();
+   }
+}
+
+function tick(e) {
+  multiplyCountdown--;
+
+//  if (level.knowsHowToMultiply) {
+    multiplyIndicator.attr('width', Math.max(0, multiplyCountdown/level.multiplyTime*width));
+//  }
+  if (multiplyCountdown < 0 && nodes.length > 0 && level.knowsHowToMultiply) {
+    multiply.currentTime = 0;
+    multiply.volume = Math.min(1, nodes.length / 100);
+
+    var l = nodes.length * level.promiscuity;
+    for (var i = 0; i < l; i++) {
+      nodes.push({
+        x : nodes[i].x + Math.random()*15,
+        y : nodes[i].y + Math.random()*15,
+        r : nodes[i].r / 2,
+        rs : 0.1,
+        type : 'god'
+      });
+    }
+    createNodes(nodes);
+    force
+        .nodes(nodes)
+        .start();
+
+    multiply.play();
+    multiplyCountdown = level.multiplyTime;
+  }
+
+  ticks += 1;
+
+  if (keys[37] || keys[65]) {
+    for (var i = 0; i < ships.length; i++) {
+      ships[i]['angleS'] += Math.PI / 600;
+    }
+  }
+  if (keys[39] || keys[68]) {
+    for (var i = 0; i < ships.length; i++) {
+      ships[i]['angleS'] -= Math.PI / 600;
+    }
+  }
+
+  reload--;
+  reloadIndicator.attr('width', Math.max(0, reload/reloadTime*width));
+
+  if (keys[90] || keys[32]) {
+    if (reload < 0 && !lost) {
+      snd.currentTime=0;
+      snd.play();
+
+      for (var j = 0; j < ships.length; j++) {
+        bullets.push({
+          angle : ships[j].angle,
+          distance : ships[j].distance - 24, 
+          r : 5,
+          type : 'bullet'
+        });
+      }
+      reload = reloadTime;
+    }
+  }
+
+  ships.forEach(function (ship) {
+    ship.angle += ship.angleS;
+    ship.angleS *= 0.95;
+  });
+
+  var bullet = svg.selectAll(".bullet").data(bullets);
+
+  bullet.enter().append("g")
+    .append("circle")
+    .attr('class', 'bullet')
+    .attr("r", function (d) { return d.r; })
+    .attr("fill", "#000000");
+
+  bullets.forEach(function (b) {
+    b.distance -= 2;
+  });
+
+  svg.selectAll(".bullet")
+    .attr("cx", function (d) { return width / 2 + Math.cos(d.angle) * d.distance; })
+    .attr("cy", function (d) { return height / 2 + Math.sin(d.angle) * d.distance; });
+
+  svg.selectAll(".ship")
+    .attr("x", function (d) { return width / 2 + Math.cos(d.angle) * d.distance; })
+    .attr("y", function (d) { return height / 2 + Math.sin(d.angle) * d.distance; });
+
+  svg.selectAll(".god")
+    .attr("cx", function (d) { return d.x; })
+    .attr("cy", function (d) { return d.y; })
+    .attr('r', function (d, i) { 
+//      d.rs += Math.random() * 0.1 - 0.05;
+      d.r += d.rs;
+      d.r = Math.min(level.maxsize, d.r);
+//      d.rs *= 0.9;
+      return d.r; 
+    });
+
+  collisions();
+
+  // Destroy things that are exploding
+  var newNodes = [];
+  for (var i = 0; i < nodes.length; i++) {
+    if (!nodes[i].exploding) {
+      newNodes.push(nodes[i]);
+    }
+  }
+
+  var newBullets = [];
+  for (var i = 0; i < bullets.length; i++) {
+    if (!bullets[i].exploding) {
+      newBullets.push(bullets[i]);
+    } else {
+      var soundNum = Math.floor(Math.random() * hitSounds.length);
+      hitSounds[soundNum].currentTime=0;
+      hitSounds[soundNum].play();
+    }
+  }
+
+  if (bullets.length !== newBullets.length) {
+    bullets = newBullets;
+    svg.selectAll(".bullet").data(newBullets)
+    .exit().remove();
+  }
+
+  if (nodes.length !== newNodes.length) {
+    nodes = newNodes;
+    svg.selectAll(".god").data(newNodes)
+      .exit().remove();
+
+    if (nodes.length === 0) {
+      levelCompleted();
+    }
+  }
+
+  force.alpha(0.1);
+}
+
+</script>
