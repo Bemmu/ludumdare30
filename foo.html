@@ -1,6 +1,20 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <body>
+  <svg width=960 height=500 style="border:dashed 2px #ccc">
+  <defs>
+    <radialGradient id="grad1" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+          <stop offset="0%" style="stop-color:rgb(255,255,255);
+          stop-opacity:0.2" />
+          <stop offset="100%" style="stop-color:rgb(255,255,255);stop-opacity:0" />
+        </radialGradient>
+      <radialGradient id="grad2" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+            <stop offset="0%" style="stop-color:rgb(255,255,255);
+            stop-opacity:1" />
+            <stop offset="100%" style="stop-color:rgb(255,255,255);stop-opacity:0" />
+          </radialGradient>
+    </defs>
+  </svg>
 <script src="d3.js"></script>
 <script>
 
@@ -9,20 +23,79 @@ var width = 960,
 var keys = {};
 
 var force = d3.layout.force()
-    .gravity(1)
+    .gravity(0.1)
     .size([width, height])
     .on("tick", tick);
 
-var svg = d3.select("body").append("svg")
-    .attr("width", width)
-    .attr("height", height);
+var svg = d3.select("svg");
 
 var color = Math.random() * 360;
+
+var heroColor = d3.hsl(color + 130, 0.9, 0.1);
+
+var ticks = 0;
+var reloadTime = 100;
+var reload = reloadTime;
+
+var snd = new Audio("shoot.wav");
+var wingame = new Audio("wingame.wav");
+var losegame = new Audio("losegame.wav");
+var levelcomplete = new Audio("levelcomplete.wav");
+var multiply = new Audio("multiply.wav");
+var hitSounds = [new Audio("hit1.wav"), new Audio("hit2.wav")];
+
+var levels = [
+  {
+    initialParticles : 3,
+    knowsHowToMultiply : true,
+    colorVariety : 0,
+    enemyFill : function(d) {
+      return "url(#grad2)";
+    },
+    multiplyTime : 300
+  },
+  {
+    initialParticles : 10,
+    knowsHowToMultiply : false,
+    colorVariety : 20,
+    enemyFill : function(d) {
+      return d3.hsl(
+        200 + color + level.colorVariety * Math.sin(Math.atan2(
+          width/2 - d.x, 
+          height/2 - d.y
+        )),
+        0.6,
+        0.6 //- (d.y/height)*0.2
+      );
+    },
+    multiplyTime : 100
+  }
+];
+var currentLevel = 0;
+var level = levels[currentLevel];
+
+var multiplyCountdown = level.multiplyTime;
 
 svg.append('rect')
   .attr("width", width)
   .attr("height", height)
-  .attr("fill", d3.hsl(color, 0.5, 0.5))
+  .attr("fill", d3.hsl(color, 0.5, 0.5));
+
+svg.append('rect')
+  .attr("width", width)
+  .attr("height", height)
+  .attr("fill", "url(#grad1)"/*d3.hsl(color, 0.5, 0.5)*/);
+
+var reloadIndicator = svg.append('rect')
+    .attr("width", width)
+    .attr("height", height / 25)
+    .attr("fill", heroColor);
+
+var multiplyIndicator = svg.append('rect')
+    .attr("width", width)
+    .attr("y", height - height / 25)
+    .attr("height", height / 25)
+    .attr("fill", d3.hsl(color + 180, 0.9, 0.5));
 
 var nodes = [];
 var ships = [];
@@ -30,27 +103,40 @@ var bullets = [];
 
 update();
 
-function update() {
+function createNodes(nodes) {
+  var node = svg.selectAll(".node").data(nodes);
+  var nodeEnter = node.enter().append("g")
+    .append("circle")
+    .attr('class', 'god')
+    .attr('cx', function (d) { return d.x; })
+    .attr('cy', function (d) { return d.y; })
+    .attr('r', function (d) { return d.r; })
+    .attr("fill", level.enemyFill);
+}
 
-  for (var i = 0; i < 100; i++) {
+function godParticles(count) {
+  for (var i = 0; i < count; i++) {
     nodes.push({
-      x : width / 2,
-      r : 20,
-      rs : 0,
+      x : width / 2 + Math.random()*15,
+      y : height / 2 + Math.random()*15,
+      r : 1,
+      rs : 0.1,
       type : 'god'
     });
   }
-
-  ships.push({
-    angle : 10,
-    angleS : 0,
-    distance : 200
-  });
-
+  createNodes(nodes);
   // Restart the force layout.
   force
       .nodes(nodes)
       .start();
+}
+
+window.onload = function () {
+//  levelCompleted();
+};
+
+function update() {
+  godParticles(level.initialParticles);
 
   for (var i = 0; i < 100; i++) {
     force.tick();
@@ -59,26 +145,17 @@ function update() {
   // Update nodes.
   //node = node.data(nodes);
 
-  var node = svg.selectAll(".node").data(nodes);
-
-  //node.exit().remove();
-
-  var nodeEnter = node.enter().append("g")
-      .append("circle")
-      .attr('class', 'god')
-      .attr('cx', function (d) { return d.x; })
-      .attr('cy', function (d) { return d.y; })
-      .attr('r', function (d) { return d.r; })
-      .attr("fill", function(d) {
-        return d3.hsl(
-          200 + color /*+ 20 * Math.sin(Math.atan2(
-            width/2 - d.x, 
-            height/2 - d.y
-          ))*/,
-          0.6,
-          0.6 //- (d.y/height)*0.2
-        );
-      });
+  ships.push({
+    angle : 0,
+    angleS : 0,
+    distance : 200
+  }/*,
+  {
+      angle : Math.PI,
+      angleS : 0,
+      distance : 200
+    }*/
+  );
 
   var ship = svg.selectAll(".ship").data(ships);
 
@@ -86,7 +163,7 @@ function update() {
     .append("circle")
     .attr('class', 'ship')
     .attr("r", 20)
-    .attr("fill", "#000000");
+    .attr("fill", heroColor);
 }
 
 d3.select("body")
@@ -134,11 +211,58 @@ function collide(node) {
  };
 }
 
-var ticks = 0;
-function tick(e) {
-//  nodes = [];
+function winGame() {
+  wingame.volume = 0.5;
+  wingame.play();
+  console.log('won game');
+}
 
-//  console.log(keys);
+function loseGame() {
+  losegame.play();
+  console.log('lost game');
+}
+
+function levelCompleted() {
+  currentLevel++;
+  if (currentLevel >= levels.length) {
+    winGame();
+  } else {
+    levelcomplete.currentTime=0;
+    levelcomplete.play();
+    level = levels[currentLevel];
+    console.log('completed level');
+  }
+}
+
+function tick(e) {
+  multiplyCountdown--;
+
+//  if (level.knowsHowToMultiply) {
+    multiplyIndicator.attr('width', Math.max(0, multiplyCountdown/level.multiplyTime*width));
+//  }
+  if (multiplyCountdown < 0 && nodes.length > 0 && level.knowsHowToMultiply) {
+    multiply.currentTime = 0;
+    multiply.volume = Math.min(1, nodes.length / 100);
+
+    var l = nodes.length;
+    for (var i = 0; i < l; i++) {
+      nodes.push({
+        x : nodes[i].x + Math.random()*15,
+        y : nodes[i].y + Math.random()*15,
+        r : nodes[i].r / 2,
+        rs : 0.1,
+        type : 'god'
+      });
+    }
+    createNodes(nodes);
+    force
+        .nodes(nodes)
+        .start();
+
+    multiply.play();
+    multiplyCountdown = level.multiplyTime;
+  }
+
   ticks += 1;
 
   if (keys[37] || keys[65]) {
@@ -151,13 +275,25 @@ function tick(e) {
       ships[i]['angleS'] -= Math.PI / 600;
     }
   }
+
+  reload--;
+  reloadIndicator.attr('width', Math.max(0, reload/reloadTime*width));
+
   if (keys[90] || keys[32]) {
-    bullets.push({
-      angle : ships[0].angle,
-      distance : ships[0].distance,
-      r : 5,
-      type : 'bullet'
-    });
+    if (reload < 0) {
+      snd.currentTime=0;
+      snd.play();
+
+      for (var j = 0; j < ships.length; j++) {
+        bullets.push({
+          angle : ships[j].angle,
+          distance : ships[j].distance,
+          r : 5,
+          type : 'bullet'
+        });
+      }
+      reload = reloadTime;
+    }
   }
 
   ships.forEach(function (ship) {
@@ -190,8 +326,8 @@ function tick(e) {
     .attr("cy", function (d) { return d.y; })
     .attr('r', function (d, i) { 
 //      d.rs += Math.random() * 0.1 - 0.05;
-//      d.r += d.rs;
-//      d.r = Math.max(5, d.r);
+      d.r += d.rs;
+      d.r = Math.min(30, d.r);
 //      d.rs *= 0.9;
       return d.r; 
     });
@@ -210,6 +346,10 @@ function tick(e) {
   for (var i = 0; i < bullets.length; i++) {
     if (!bullets[i].exploding) {
       newBullets.push(bullets[i]);
+    } else {
+      var soundNum = Math.floor(Math.random() * hitSounds.length);
+      hitSounds[soundNum].currentTime=0;
+      hitSounds[soundNum].play();
     }
   }
 
@@ -223,6 +363,10 @@ function tick(e) {
     nodes = newNodes;
     svg.selectAll(".god").data(newNodes)
       .exit().remove();
+
+    if (nodes.length === 0) {
+      levelCompleted();
+    }
   }
 
   force.alpha(0.1);
