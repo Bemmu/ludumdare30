@@ -14,6 +14,33 @@
             <stop offset="100%" style="stop-color:rgb(255,255,255);stop-opacity:0" />
           </radialGradient>
     </defs>
+    <g id="backgrounds"></g>
+    <g id="all"></g>
+    <g id="text" transform="skewY(3) skewX(5)">
+      <text id="winteksti" transform="translate(100,150)"
+      opacity = "0"
+        font-family="Impact, Charcoal, sans-serif" font-size="55">
+        You saved the earth!
+      </text>
+      <text id="loseteksti" transform="translate(100,150)"
+      opacity = "0"
+        font-family="Impact, Charcoal, sans-serif" font-size="55">
+        Earth was destroyed!
+      </text>
+
+      <text id="teksti"
+            opacity = "0.8"
+              font-family="Impact, Charcoal, sans-serif" font-size="55"
+
+               fill="white" >
+<tspan x="0" dy="4.2em">In the year 2015</tspan>
+<tspan x="0" dy="4.2em">A wormhole replaced the sun</tspan>
+<tspan x="0" dy="4.2em">And strange worlds started to emerge</tspan>
+<tspan x="0" dy="4.2em">Earth itself is our final defense</tspan>
+<tspan x="0" dy="4.2em">Use left & right arrow</tspan>
+<tspan x="0" dy="1.2em">and space bar to defend!</tspan>
+        </text>
+    </g>
   </svg>
 <script src="d3.js"></script>
 <script>
@@ -27,14 +54,14 @@ var force = d3.layout.force()
     .size([width, height])
     .on("tick", tick);
 
-var svg = d3.select("svg");
+var svg = d3.select("svg").select("#all");
 
 var color = Math.random() * 360;
 
 var heroColor = d3.hsl(color + 130, 0.9, 0.1);
 
 var ticks = 0;
-var reloadTime = 100;
+var reloadTime = 10;
 var reload = reloadTime;
 
 var snd = new Audio("shoot.wav");
@@ -46,16 +73,17 @@ var hitSounds = [new Audio("hit1.wav"), new Audio("hit2.wav")];
 
 var levels = [
   {
-    initialParticles : 3,
-    knowsHowToMultiply : true,
+    initialParticles : 0,
+    knowsHowToMultiply : false,
     colorVariety : 0,
     enemyFill : function(d) {
-      return "url(#grad2)";
+      return "#000000"
     },
-    multiplyTime : 300
+    multiplyTime : 0
   },
   {
     initialParticles : 10,
+    promiscuity : 0.2,
     knowsHowToMultiply : false,
     colorVariety : 20,
     enemyFill : function(d) {
@@ -69,33 +97,124 @@ var levels = [
       );
     },
     multiplyTime : 100
+  },
+  {
+    initialParticles : 50,
+    promiscuity : 0.2,
+    knowsHowToMultiply : false,
+    colorVariety : 20,
+    enemyFill : function(d) {
+      return d3.hsl(
+        200 + color + level.colorVariety * Math.sin(Math.atan2(
+          width/2 - d.x, 
+          height/2 - d.y
+        )),
+        0.6,
+        0.6 //- (d.y/height)*0.2
+      );
+    },
+    multiplyTime : 100
+  },
+  {
+    initialParticles : 10,
+    promiscuity : 0.2,
+    knowsHowToMultiply : true,
+    colorVariety : 20,
+    enemyFill : function(d) {
+      return d3.hsl(
+        200 + color + level.colorVariety * Math.sin(Math.atan2(
+          width/2 - d.x, 
+          height/2 - d.y
+        )),
+        0.6,
+        0.6 //- (d.y/height)*0.2
+      );
+    },
+    multiplyTime : 100
+  },
+  {
+    initialParticles : 3,
+    knowsHowToMultiply : true,
+    colorVariety : 0,
+    enemyFill : function(d) {
+      return "url(#grad2)";
+    },
+    multiplyTime : 100,
+    promiscuity : 0.95
+  },
+  {
+    initialParticles : 20,
+    knowsHowToMultiply : true,
+    colorVariety : 20,
+    enemyFill : function(d) {
+      return d3.hsl(
+        200 + color + level.colorVariety * Math.sin(Math.atan2(
+          width/2 - d.x, 
+          height/2 - d.y
+        )),
+        0.6,
+        0.6 //- (d.y/height)*0.2
+      );
+    },
+    multiplyTime : 200,
+    promiscuity : 0.5
+  },
+  {
+    initialParticles : 3,
+    knowsHowToMultiply : true,
+    colorVariety : 0,
+    enemyFill : function(d) {
+      return "url(#grad2)";
+    },
+    multiplyTime : 100,
+    promiscuity : 1.1
   }
 ];
 var currentLevel = 0;
 var level = levels[currentLevel];
-
 var multiplyCountdown = level.multiplyTime;
 
-svg.append('rect')
+var background = d3.select("svg").select("#backgrounds").append('rect')
   .attr("width", width)
   .attr("height", height)
   .attr("fill", d3.hsl(color, 0.5, 0.5));
 
-svg.append('rect')
+d3.select("svg").select("#backgrounds").append('rect')
   .attr("width", width)
   .attr("height", height)
   .attr("fill", "url(#grad1)"/*d3.hsl(color, 0.5, 0.5)*/);
 
-var reloadIndicator = svg.append('rect')
+var reloadIndicator = d3.select("svg").select("#backgrounds").append('rect')
     .attr("width", width)
     .attr("height", height / 25)
     .attr("fill", heroColor);
 
-var multiplyIndicator = svg.append('rect')
+var multiplyIndicator = d3.select("svg").select("#backgrounds").append('rect')
     .attr("width", width)
     .attr("y", height - height / 25)
     .attr("height", height / 25)
     .attr("fill", d3.hsl(color + 180, 0.9, 0.5));
+
+svg.append('rect')
+  .attr("x", width / 2 - height / 30 / 2)
+  .attr("y", height / 2)
+  .attr("width", height / 30)
+  .attr("height", 1)
+  .attr("fill", "#000000");
+
+svg.append('rect')
+  .attr("x", width / 2)
+  .attr("y", height / 2 - height / 30 / 2)
+  .attr("width", 1)
+  .attr("height", height / 30)
+  .attr("fill", "#000000");
+
+/*svg.append('image')
+  .attr('x', width / 40)
+  .attr('y', height / 2)
+  .attr('width', 121)
+  .attr('height', 124)
+  .attr('xlink:href', 'earth.png');*/
 
 var nodes = [];
 var ships = [];
@@ -131,7 +250,24 @@ function godParticles(count) {
       .start();
 }
 
+var textY = 400;
+function translate(d) {
+  return "translate(0, " + textY + ")";
+}
+
 window.onload = function () {
+  d3.select("svg").select("#teksti")
+    .attr('transform', 'translate(0, 400)')
+    .transition().duration(1)
+ /*   .transition().duration(2000).attr('transform', 'translate(0, 0)')
+    .transition().duration(2000).attr('transform', 'translate(0, -300)')
+    .transition().duration(2000).attr('transform', 'translate(0, -600)')
+    .transition().duration(2000).attr('transform', 'translate(0, -900)')
+    .transition().duration(2000).attr('opacity', '0')*/
+    .each("end", levelCompleted)
+    ;
+
+
 //  levelCompleted();
 };
 
@@ -159,11 +295,25 @@ function update() {
 
   var ship = svg.selectAll(".ship").data(ships);
 
-  ship.enter().append("g")
-    .append("circle")
-    .attr('class', 'ship')
-    .attr("r", 20)
-    .attr("fill", heroColor);
+  var g = ship.enter().append("g");
+
+  g.append('image')
+//    .append("circle")
+    .attr('class', 'ship')    
+ //   .attr("r", 20)
+    .attr('transform', 'translate(-30.5, -31) scale(1)')
+    .attr('width', 61)
+    .attr('height', 62)
+    .attr('xlink:href', 'earth2.png');
+//    .attr("fill", heroColor);
+
+/*    svg
+      .attr('x', width / 40)
+      .attr('y', height / 2)
+      .attr('width', 121)
+      .attr('height', 124)
+      .attr('xlink:href', 'earth.png');
+*/
 }
 
 d3.select("body")
@@ -175,9 +325,28 @@ d3.select("body")
     });
 
 function collisions() {
+
+
   for (var i = 0; i < bullets.length; i++) {
     bullets[i].x = width / 2 + Math.cos(bullets[i].angle) * bullets[i].distance;
     bullets[i].y = height / 2 + Math.sin(bullets[i].angle) * bullets[i].distance;
+  }
+
+  for (var i = 0; i < ships.length; i++) {
+    ships[i].x = width / 2 + Math.cos(ships[i].angle) * ships[i].distance;
+    ships[i].y = height / 2 + Math.sin(ships[i].angle) * ships[i].distance;
+  }
+
+  // Check if any bullets hit earth
+  for (var i = 0; i < bullets.length; i++) {
+    for (var j = 0; j < ships.length; j++) {
+      var xd = ships[j].x - bullets[i].x;
+      var yd = ships[j].y - bullets[j].y;
+      var distance = Math.sqrt(xd*xd + yd*yd);
+      if (distance < 20) {
+//        loseGame();
+      }
+    }
   }
 
   var combined = nodes.concat(bullets);
@@ -212,14 +381,38 @@ function collide(node) {
 }
 
 function winGame() {
+
+  d3.select("svg").select("#winteksti")
+    .transition().attr('opacity', '1')
   wingame.volume = 0.5;
   wingame.play();
   console.log('won game');
 }
 
+var lost = false;
 function loseGame() {
+  if (lost) return;
+  lost = true;
   losegame.play();
+  d3.select(".ship").remove();
+  d3.select("svg").select("#loseteksti")
+    .transition().attr('opacity', '1')
   console.log('lost game');
+}
+
+function clear() {
+  bullets = [];
+  svg.selectAll(".bullet").remove();
+
+  ships = [];
+  svg.selectAll(".ship").remove();
+
+  color = Math.random() * 360;
+  background.transition().attr("fill", d3.hsl(color, 0.5, 0.5));
+  heroColor = d3.hsl(color + 130, 0.9, 0.1);
+  reloadIndicator.transition().attr("fill", heroColor);
+  multiplyIndicator.attr("fill", d3.hsl(color + 180, 0.9, 0.5));
+
 }
 
 function levelCompleted() {
@@ -231,6 +424,12 @@ function levelCompleted() {
     levelcomplete.play();
     level = levels[currentLevel];
     console.log('completed level');
+
+    // Some shopping part?
+
+    // Should recreate all bullets, god particles and ships
+    clear();
+    update();
   }
 }
 
@@ -244,7 +443,7 @@ function tick(e) {
     multiply.currentTime = 0;
     multiply.volume = Math.min(1, nodes.length / 100);
 
-    var l = nodes.length;
+    var l = nodes.length * level.promiscuity;
     for (var i = 0; i < l; i++) {
       nodes.push({
         x : nodes[i].x + Math.random()*15,
@@ -280,14 +479,14 @@ function tick(e) {
   reloadIndicator.attr('width', Math.max(0, reload/reloadTime*width));
 
   if (keys[90] || keys[32]) {
-    if (reload < 0) {
+    if (reload < 0 && !lost) {
       snd.currentTime=0;
       snd.play();
 
       for (var j = 0; j < ships.length; j++) {
         bullets.push({
           angle : ships[j].angle,
-          distance : ships[j].distance,
+          distance : ships[j].distance - 24, 
           r : 5,
           type : 'bullet'
         });
@@ -318,8 +517,8 @@ function tick(e) {
     .attr("cy", function (d) { return height / 2 + Math.sin(d.angle) * d.distance; });
 
   svg.selectAll(".ship")
-    .attr("cx", function (d) { return width / 2 + Math.cos(d.angle) * d.distance; })
-    .attr("cy", function (d) { return height / 2 + Math.sin(d.angle) * d.distance; });
+    .attr("x", function (d) { return width / 2 + Math.cos(d.angle) * d.distance; })
+    .attr("y", function (d) { return height / 2 + Math.sin(d.angle) * d.distance; });
 
   svg.selectAll(".god")
     .attr("cx", function (d) { return d.x; })
