@@ -34,15 +34,15 @@
               font-family="Impact, Charcoal, sans-serif" font-size="55"
 
                fill="white" >
-<tspan x="0" dy="4.2em">In the year 2015</tspan>
-<tspan x="0" dy="4.2em">A wormhole replaced the sun</tspan>
-<tspan x="0" dy="4.2em">And strange worlds started to emerge</tspan>
+<tspan x="0" dy="4.2em">The sun collapsed</tspan>
+<tspan x="0" dy="4.2em">Turned into a wormhole</tspan>
+<tspan x="0" dy="4.2em">Strange worlds started to emerge</tspan>
 <tspan x="0" dy="4.2em">Earth itself is our final defense</tspan>
 <tspan x="0" dy="4.2em">Use left & right arrow</tspan>
 <tspan x="0" dy="1.2em">and space bar to defend!</tspan>
         </text>
     </g>
-    <g id="aim"></g>
+    <g id="aim" opacity="0"></g>
   </svg>
 <script src="d3.js"></script>
 <script>
@@ -148,6 +148,24 @@ var levels = [
     multiplyTime : 100,
     promiscuity : 0.95,
     maxsize : 30
+  },
+  {
+    initialParticles : 10,
+    promiscuity : 0.2,
+    knowsHowToMultiply : true,
+    colorVariety : 20,
+    enemyFill : function(d) {
+      return d3.hsl(
+        200 + color + level.colorVariety * Math.sin(Math.atan2(
+          width/2 - d.x, 
+          height/2 - d.y
+        )),
+        0.6,
+        0.6 //- (d.y/height)*0.2
+      );
+    },
+    multiplyTime : 100,
+    maxsize : 300
   },
   {
     initialParticles : 20,
@@ -267,12 +285,12 @@ function translate(d) {
 window.onload = function () {
   d3.select("svg").select("#teksti")
     .attr('transform', 'translate(0, 400)')
-    .transition().duration(1)
- /*   .transition().duration(2000).attr('transform', 'translate(0, 0)')
+ //   .transition().duration(1)
+    .transition().duration(2000).attr('transform', 'translate(0, 0)')
     .transition().duration(2000).attr('transform', 'translate(0, -300)')
     .transition().duration(2000).attr('transform', 'translate(0, -600)')
     .transition().duration(2000).attr('transform', 'translate(0, -900)')
-    .transition().duration(2000).attr('opacity', '0')*/
+    .transition().duration(2000).attr('opacity', '0')
     .each("end", levelCompleted)
     ;
 
@@ -295,7 +313,7 @@ ships.push({
 function update() {
   godParticles(level.initialParticles);
 
-  for (var i = 0; i < 100; i++) {
+  for (var i = 0; i < 150; i++) {
     force.tick();
   }
 
@@ -426,6 +444,9 @@ function clear() {
 }
 
 function levelCompleted() {
+
+  d3.select("svg").select("#aim").transition().duration(500).attr('opacity', '1.0');
+
   currentLevel++;
   if (currentLevel >= levels.length) {
     winGame();
@@ -440,7 +461,7 @@ function levelCompleted() {
     // Should recreate all bullets, god particles and ships
     clear();
     update();
-  }
+   }
 }
 
 function tick(e) {
